@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Ventes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0f14;color:#e8eaf0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+header{padding:1rem 2rem;background:#161923;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:1rem}
+header h1{font-size:1rem;font-weight:600}
+.tag{font-size:11px;background:rgba(79,142,247,.15);color:#4f8ef7;padding:3px 10px;border-radius:99px;border:1px solid rgba(79,142,247,.3)}
+.kpi-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+.kpi{background:#161923;padding:1rem 1.25rem}
+.kpi-l{font-size:10px;color:#7a8099;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.kpi-v{font-size:1.3rem;font-weight:700}
+.kpi-s{font-size:11px;color:#7a8099;margin-top:2px}
+.main{display:grid;grid-template-columns:1fr 320px;min-height:calc(100vh - 110px)}
+.chart-panel{padding:1.5rem 2rem;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:.75rem}
+.panel-title{font-size:11px;color:#7a8099;text-transform:uppercase;letter-spacing:.08em}
+.legend-row{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#7a8099}
+.legend-row span{display:flex;align-items:center;gap:5px}
+.legend-row i{width:10px;height:10px;border-radius:50%;display:inline-block}
+#svgWrap{flex:1;min-height:460px}
+.side{padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto;max-height:calc(100vh - 110px)}
+.card{background:#161923;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1rem}
+.card-title{font-size:10px;color:#7a8099;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.best-id{font-size:1.4rem;font-weight:700;color:#f5c842}
+.best-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.bs{background:rgba(0,0,0,.3);border-radius:7px;padding:8px 10px}
+.bs-l{font-size:10px;color:#7a8099;margin-bottom:2px}
+.bs-v{font-size:13px;font-weight:600}
+input[type=text]{width:100%;background:#0d0f14;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:8px 11px;color:#e8eaf0;font-size:13px;outline:none;transition:border .2s}
+input[type=text]:focus{border-color:#4f8ef7}
+#sRes{margin-top:10px;font-size:12px;line-height:1.8;color:#7a8099;min-height:40px}
+#sRes strong{color:#e8eaf0}
+.leg-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.leg-list::-webkit-scrollbar{width:3px}
+.leg-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px}
+.li{display:flex;align-items:center;gap:7px;font-size:11px;padding:4px 6px;border-radius:6px}
+.ld{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ln{flex:1;color:#e8eaf0}
+.lp{color:#7a8099}
+.tip{position:fixed;pointer-events:none;background:#1e2330;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;font-size:13px;z-index:9999;display:none;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,.6);line-height:1.7}
+.tip b{color:#e8eaf0}
+.tip .tv{color:#3ecf8e;font-weight:600}
+.tip .tp{color:#7a8099;font-size:11px}
+.tip .tstar{color:#f5c842;font-size:11px;margin-top:2px}
+#overlay{position:fixed;inset:0;background:#0d0f14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;z-index:10000}
+#overlay.hidden{display:none}
+.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.1);border-top-color:#4f8ef7;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#ovMsg{font-size:13px;color:#7a8099}
+.search-note{font-size:10px;color:#4f8ef7;margin-top:4px;cursor:pointer;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="overlay"><div class="spin"></div><div id="ovMsg">Chargement…</div></div>
+
+<header>
+  <h1>Dashboard Ventes</h1>
+  <span class="tag" id="hTag">—</span>
+</header>
+
+<div class="kpi-bar">
+  <div class="kpi"><div class="kpi-l">CA Total</div><div class="kpi-v" id="kCA">—</div></div>
+  <div class="kpi"><div class="kpi-l">CA Moyen</div><div class="kpi-v" id="kMoy">—</div></div>
+  <div class="kpi"><div class="kpi-l">Meilleur</div><div class="kpi-v" id="kMax">—</div><div class="kpi-s" id="kMaxId"></div></div>
+  <div class="kpi"><div class="kpi-l">Moins bon</div><div class="kpi-v" id="kMin">—</div><div class="kpi-s" id="kMinId"></div></div>
+  <div class="kpi"><div class="kpi-l">Médiane</div><div class="kpi-v" id="kP50">—</div></div>
+  <div class="kpi"><div class="kpi-l">Produits</div><div class="kpi-v" id="kNb">—</div></div>
+</div>
+
+<div class="main">
+  <div class="chart-panel">
+    <div class="panel-title">Répartition CA Net — 500 000 produits regroupés en tranches · meilleur isolé</div>
+    <div class="legend-row">
+      <span><i style="background:#f5c842;box-shadow:0 0 6px #f5c84288"></i> Meilleur produit (isolé)</span>
+      <span><i style="background:#4f8ef7"></i> Tranche haute</span>
+      <span><i style="background:#3ecf8e"></i> Tranche moyenne</span>
+      <span><i style="background:#e05252"></i> Tranche basse</span>
+    </div>
+    <div id="svgWrap"></div>
+  </div>
+  <div class="side">
+    <div class="card" style="border-color:rgba(245,200,66,.25);background:rgba(245,200,66,.04)">
+      <div class="card-title" style="color:#f5c842">★ Meilleur produit</div>
+      <div class="best-id" id="bId">—</div>
+      <div class="best-grid">
+        <div class="bs"><div class="bs-l">CA Net</div><div class="bs-v" style="color:#f5c842" id="bVal">—</div></div>
+        <div class="bs"><div class="bs-l">Part du total</div><div class="bs-v" style="color:#f5c842" id="bPct">—</div></div>
+        <div class="bs"><div class="bs-l">Rang</div><div class="bs-v">#1 / <span id="bTotal">—</span></div></div>
+        <div class="bs"><div class="bs-l">vs Moyenne</div><div class="bs-v" style="color:#3ecf8e" id="bVs">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Rechercher un produit (tous les <span id="sTotal">—</span>)</div>
+      <input type="text" id="sInput" placeholder="Entrez un ID…" oninput="search()">
+      <div id="sRes">
+        <span id="searchStatus" style="color:#4f8ef7;font-size:11px">Cliquez ici pour activer la recherche</span>
+      </div>
+      <div class="search-note" onclick="loadSearch()">⚡ Charger les données de recherche</div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-title">Tranches CA Net</div>
+      <div class="leg-list" id="legList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+let G = null;
+let searchData = null;
+let searchLoading = false;
+
+function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtK(n){if(n>=1e6)return(n/1e6).toFixed(2)+' M€';if(n>=1e3)return(n/1e3).toFixed(1)+' k€';return fmt(n)+' €';}
+function tick(){return new Promise(r=>setTimeout(r,20));}
+
+function bucketColor(i, total){
+  const t = i / (total - 1);
+  if(t > 0.85) return '#e05252';
+  if(t > 0.6)  return '#f5874f';
+  if(t > 0.35) return '#3ecf8e';
+  if(t > 0.1)  return '#4fd1c5';
+  return '#4f8ef7';
+}
+
+// ── Chargement principal : dashboard_data.json (léger) ───────────────
+async function load(){
+  try{
+    document.getElementById('ovMsg').textContent='Chargement dashboard_data.json…';
+    const r = await fetch('dashboard_data.json');
+    if(!r.ok) throw new Error();
+    document.getElementById('ovMsg').textContent='Traitement…';
+    const data = await r.json();
+    await tick();
+    init(data);
+  }catch{
+    document.getElementById('ovMsg').textContent='Fichier non trouvé. Lancez vente.py puis F5.';
+  }
+}
+
+// ── Chargement différé : search_data.json (38 MB, à la demande) ──────
+async function loadSearch(){
+  if(searchData){ document.getElementById('searchStatus').textContent=''; return; }
+  if(searchLoading) return;
+  searchLoading = true;
+  const note = document.querySelector('.search-note');
+  note.textContent = '⏳ Chargement en cours…';
+  document.getElementById('searchStatus').textContent = 'Chargement des 500 000 produits…';
+  try{
+    const r = await fetch('search_data.json');
+    if(!r.ok) throw new Error();
+    const data = await r.json();
+    searchData = data.all;
+    note.textContent = '✅ Recherche prête';
+    document.getElementById('searchStatus').textContent = 'Tapez un ID pour rechercher.';
+  }catch{
+    note.textContent = '❌ Erreur chargement';
+    document.getElementById('searchStatus').textContent = 'Impossible de charger search_data.json.';
+  }
+  searchLoading = false;
+}
+
+function init(data){
+  G = data;
+  const {meta, best, buckets} = data;
+  document.getElementById('hTag').textContent = meta.nb_produits.toLocaleString('fr')+' produits';
+  document.getElementById('kCA').textContent  = fmtK(meta.ca_total);
+  document.getElementById('kMoy').textContent = fmtK(meta.ca_moyen);
+  document.getElementById('kMax').textContent = fmtK(meta.ca_max);
+  document.getElementById('kMaxId').textContent = 'ID '+meta.id_best;
+  document.getElementById('kMin').textContent = fmtK(meta.ca_min);
+  document.getElementById('kMinId').textContent = 'ID '+meta.id_worst;
+  document.getElementById('kP50').textContent = fmtK(meta.p50);
+  document.getElementById('kNb').textContent  = meta.nb_produits.toLocaleString('fr');
+  document.getElementById('bId').textContent  = 'Produit #'+best.id;
+  document.getElementById('bVal').textContent = fmt(best.ca)+' €';
+  document.getElementById('bPct').textContent = ((best.ca/meta.ca_total)*100).toFixed(4)+'%';
+  document.getElementById('bVs').textContent  = '+'+((best.ca/meta.ca_moyen-1)*100).toFixed(0)+'%';
+  document.getElementById('bTotal').textContent = meta.nb_produits.toLocaleString('fr');
+  document.getElementById('sTotal').textContent  = meta.nb_produits.toLocaleString('fr');
+  buildPie(best, buckets, meta);
+  buildLegend(best, buckets, meta);
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+function buildPie(best, buckets, meta){
+  const wrap = document.getElementById('svgWrap');
+  const W = wrap.clientWidth||540, H = wrap.clientHeight||480;
+  const CX = W/2, CY = H/2;
+  const R = Math.min(W,H)/2-60;
+
+  const segs = [
+    {type:'best', label:'★ Meilleur — ID '+best.id, val:best.ca, color:'#f5c842', glow:true},
+    ...buckets.map((b,i)=>({
+      type:'bucket', label:b.label, val:b.ca_sum,
+      count:b.count, ca_min:b.ca_min, ca_max:b.ca_max,
+      color: bucketColor(i, buckets.length), glow:false
+    }))
+  ];
+
+  const pie  = d3.pie().value(d=>d.val).sort(null);
+  const arc  = d3.arc().innerRadius(0).outerRadius(R);
+  const arcH = d3.arc().innerRadius(0).outerRadius(R+14);
+  const arcBest = d3.arc().innerRadius(0).outerRadius(R+28);
+
+  const svg  = d3.select('#svgWrap').append('svg').attr('width',W).attr('height',H);
+  const defs = svg.append('defs');
+  const gf   = defs.append('filter').attr('id','goldglow').attr('x','-40%').attr('y','-40%').attr('width','180%').attr('height','180%');
+  gf.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','5').attr('result','b');
+  const fm = gf.append('feMerge');
+  fm.append('feMergeNode').attr('in','b');
+  fm.append('feMergeNode').attr('in','SourceGraphic');
+
+  const g   = svg.append('g').attr('transform',`translate(${CX},${CY})`);
+  const tip = document.getElementById('tip');
+  const pieData = pie(segs);
+
+  g.selectAll('path').data(pieData).join('path')
+    .attr('d', d => d.data.type==='best' ? arcBest(d) : arc(d))
+    .attr('fill', d => d.data.color)
+    .attr('stroke','#0d0f14')
+    .attr('stroke-width', d => d.data.type==='best' ? 2 : 0.3)
+    .attr('filter', d => d.data.glow ? 'url(#goldglow)' : null)
+    .style('cursor','pointer')
+    .on('mousemove',function(event,d){
+      if(d.data.type!=='best') d3.select(this).attr('d',arcH);
+      const pct = ((d.data.val/meta.ca_total)*100).toFixed(4);
+      if(d.data.type==='best'){
+        tip.innerHTML=`<b>★ Meilleur produit</b><br><span class="tv">ID ${G.best.id} — ${fmt(d.data.val)} €</span><br><span class="tp">Part : ${pct}% du CA total</span><span class="tstar"><br>Rang #1 / ${meta.nb_produits.toLocaleString('fr')}</span>`;
+      } else {
+        tip.innerHTML=`<b>Tranche ${d.data.label}</b><br><span class="tv">${fmtK(d.data.val)} CA cumulé</span><br><span class="tp">${d.data.count.toLocaleString('fr')} produits · Part : ${pct}%</span>`;
+      }
+      tip.style.display='block';
+      tip.style.left=(event.clientX+16)+'px';
+      tip.style.top=(event.clientY+16)+'px';
+    })
+    .on('mouseleave',function(event,d){
+      if(d.data.type!=='best') d3.select(this).attr('d',arc);
+      tip.style.display='none';
+    });
+
+  const bd  = pieData[0];
+  const mid = (bd.startAngle+bd.endAngle)/2;
+  const r1=R+30, r2=R+52;
+  const x1=Math.sin(mid)*r1, y1=-Math.cos(mid)*r1;
+  const x2=Math.sin(mid)*r2, y2=-Math.cos(mid)*r2;
+  const right=x2>=0, hLen=40;
+  const x3=x2+(right?hLen:-hLen);
+
+  g.append('line').attr('x1',x1).attr('y1',y1).attr('x2',x2).attr('y2',y2).attr('stroke','#f5c842').attr('stroke-width',1.5).attr('stroke-dasharray','4,2');
+  g.append('line').attr('x1',x2).attr('y1',y2).attr('x2',x3).attr('y2',y2).attr('stroke','#f5c842').attr('stroke-width',1.5);
+  g.append('circle').attr('cx',x1).attr('cy',y1).attr('r',3).attr('fill','#f5c842');
+
+  const ax2=x3+(right?4:-4), anchor=right?'start':'end';
+  g.append('text').attr('x',ax2).attr('y',y2-9).attr('text-anchor',anchor).attr('fill','#f5c842').attr('font-size','12px').attr('font-weight','700').text('★ Meilleur · ID '+G.best.id);
+  g.append('text').attr('x',ax2).attr('y',y2+6).attr('text-anchor',anchor).attr('fill','rgba(245,200,66,.75)').attr('font-size','11px').text(fmt(G.best.ca)+' €  ('+((G.best.ca/meta.ca_total)*100).toFixed(3)+'%)');
+}
+
+function buildLegend(best, buckets, meta){
+  const list = document.getElementById('legList');
+  const el0  = document.createElement('div');
+  el0.className = 'li';
+  el0.innerHTML = `<span class="ld" style="background:#f5c842;box-shadow:0 0 4px #f5c84288"></span><span class="ln">★ ID ${best.id} (meilleur)</span><span class="lp">${fmt(best.ca)} €</span>`;
+  list.appendChild(el0);
+  [...buckets].reverse().forEach((b,i)=>{
+    const el = document.createElement('div');
+    el.className = 'li';
+    const color = bucketColor(buckets.length-1-i, buckets.length);
+    const pct   = ((b.ca_sum/meta.ca_total)*100).toFixed(2);
+    el.innerHTML = `<span class="ld" style="background:${color}"></span><span class="ln">${b.label}</span><span class="lp">${b.count.toLocaleString('fr')} prod. · ${pct}%</span>`;
+    list.appendChild(el);
+  });
+}
+
+function search(){
+  const q   = document.getElementById('sInput').value.trim();
+  const res = document.getElementById('sRes');
+  if(!searchData){
+    res.innerHTML='<span style="color:#f5874f">Cliquez sur "Charger les données de recherche" d\'abord.</span>';
+    return;
+  }
+  if(!q || !G){ res.textContent='Entrez un ID.'; return; }
+  const qn  = parseInt(q);
+  const idx = searchData.findIndex(p=>p[0]===qn);
+  if(idx===-1){ res.innerHTML='<span style="color:#e05252">Produit introuvable.</span>'; return; }
+  const [id, val] = searchData[idx];
+  const pct  = ((val/G.meta.ca_total)*100).toFixed(4);
+  const vs   = ((val/G.meta.ca_moyen-1)*100).toFixed(1);
+  const vsC  = val>=G.meta.ca_moyen?'#3ecf8e':'#e05252';
+  const isBest = idx===0;
+  res.innerHTML=`${isBest?'<span style="color:#f5c842">★ Meilleur produit !</span><br>':''}
+    <strong>ID ${id}</strong> — rang <strong>#${(idx+1).toLocaleString('fr')}</strong> / ${G.meta.nb_produits.toLocaleString('fr')}<br>
+    CA Net : <strong style="color:#3ecf8e">${fmt(val)} €</strong><br>
+    Part : ${pct}% du total<br>
+    vs Moyenne : <span style="color:${vsC}">${parseFloat(vs)>0?'+':''}${vs}%</span>`;
+}
+
+load();
+</script>
+</body>
+</html>
